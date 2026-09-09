@@ -12,20 +12,20 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Verify versions
         run: |
           version="${GITHUB_REF_NAME#v}"
-          test "$(python3 dev-port --version)" = "dev-port ${version}"
-          test "$(python3 open-browser --version)" = "open-browser ${version}"
-          test "$(python3 dev-tag --version)" = "dev-tag ${version}"
-          test "$(python3 go-install-tool --version)" = "go-install-tool ${version}"
+          test "$(python3 scripts/dev-port --version)" = "dev-port ${version}"
+          test "$(python3 scripts/open-browser --version)" = "open-browser ${version}"
+          test "$(python3 scripts/dev-tag --version)" = "dev-tag ${version}"
+          test "$(python3 scripts/go-install-tool --version)" = "go-install-tool ${version}"
 
       - name: Prepare assets
         run: |
           mkdir -p dist
-          cp dev-port open-browser dev-tag go-install-tool dist/
+          cp scripts/dev-port scripts/open-browser scripts/dev-tag scripts/go-install-tool dist/
           chmod +x dist/dev-port dist/open-browser dist/dev-tag dist/go-install-tool
           cd dist
           sha256sum dev-port open-browser dev-tag go-install-tool > checksums.txt

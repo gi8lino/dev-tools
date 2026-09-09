@@ -14,7 +14,7 @@ class GoInstallToolTests(unittest.TestCase):
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
         self.root = Path(self.directory.name)
-        self.helper = Path(__file__).resolve().parent.parent / "go-install-tool"
+        self.helper = Path(__file__).resolve().parent.parent / "scripts" / "go-install-tool"
         self.fake_bin = self.root / "fake-bin"
         self.fake_bin.mkdir()
         self.log = self.root / "go.log"

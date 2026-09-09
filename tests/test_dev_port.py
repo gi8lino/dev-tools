@@ -16,7 +16,7 @@ class DevPortTests(unittest.TestCase):
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
         self.state = Path(self.directory.name) / "ports.json"
-        self.helper = Path(__file__).resolve().parent.parent / "dev-port"
+        self.helper = Path(__file__).resolve().parent.parent / "scripts" / "dev-port"
 
     def call(self, *args, check=True):
         return subprocess.run(

@@ -1,7 +1,8 @@
 # dev-tools
 
 Small, reusable development helpers for macOS and Linux. The tools require
-Python 3.8 or newer and use only the standard library.
+Python 3.8 or newer and use only the standard library. Maintained source scripts
+live in `scripts/`; release assets keep their short executable names.
 
 ## Tools
 
@@ -10,9 +11,9 @@ Python 3.8 or newer and use only the standard library.
 Persistent, named TCP ports for local development.
 
 ```sh
-./dev-port postgres
-./dev-port app
-./dev-port pdf
+./scripts/dev-port postgres
+./scripts/dev-port app
+./scripts/dev-port pdf
 ```
 
 The first lookup binds a loopback socket to port zero, lets the OS choose an
@@ -21,10 +22,10 @@ when your service is running. Each project's current directory gets its own
 `.dev-ports.json`. Use `--file PATH` to choose another state file.
 
 ```sh
-./dev-port postgres              # Get or allocate a port
-./dev-port postgres --port 5433  # Save a fixed port
-./dev-port --reset               # Clear assignments after stopping services
-./dev-port --version
+./scripts/dev-port postgres              # Get or allocate a port
+./scripts/dev-port postgres --port 5433  # Save a fixed port
+./scripts/dev-port --reset               # Clear assignments after stopping services
+./scripts/dev-port --version
 ```
 
 Fixed ports are validated but are not checked for availability. Two service names
@@ -45,9 +46,9 @@ Wait for an HTTP or HTTPS endpoint to respond, then open it in the default brows
 This is useful for development commands that start a server and browser together.
 
 ```sh
-./open-browser http://127.0.0.1:8080/
-./open-browser --timeout 30 http://127.0.0.1:8080/
-./open-browser --version
+./scripts/open-browser http://127.0.0.1:8080/
+./scripts/open-browser --timeout 30 http://127.0.0.1:8080/
+./scripts/open-browser --version
 ```
 
 Any HTTP response means the endpoint is reachable, including error responses such
@@ -59,11 +60,11 @@ Create lightweight semantic version tags using the latest valid `X.Y.Z` tag in t
 repository. The default prefix is `v`.
 
 ```sh
-./dev-tag current
-./dev-tag patch
-./dev-tag minor
-./dev-tag major
-./dev-tag --prefix "" patch
+./scripts/dev-tag current
+./scripts/dev-tag patch
+./scripts/dev-tag minor
+./scripts/dev-tag major
+./scripts/dev-tag --prefix "" patch
 ```
 
 With no matching tags, `current` prints `0.0.0` and the first patch tag is `v0.0.1`.
@@ -76,7 +77,7 @@ Install a pinned Go tool into a local bin directory, keep the versioned binary, 
 link the stable binary name to it.
 
 ```sh
-./go-install-tool \
+./scripts/go-install-tool \
   --target ./bin/golangci-lint \
   --package github.com/golangci/golangci-lint/v2/cmd/golangci-lint \
   --tool-version v2.13.2

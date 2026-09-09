@@ -28,7 +28,7 @@ class OpenBrowserTests(unittest.TestCase):
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
         directory = Path(self.directory.name)
-        self.helper = Path(__file__).resolve().parent.parent / "open-browser"
+        self.helper = Path(__file__).resolve().parent.parent / "scripts" / "open-browser"
         self.capture = directory / "opened-url.txt"
         self.browser = directory / "browser"
         self.browser.write_text('#!/bin/sh\nprintf "%s\\n" "$1" > "$OPEN_BROWSER_CAPTURE"\n')

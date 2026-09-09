@@ -13,7 +13,7 @@ class DevTagTests(unittest.TestCase):
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
         self.repository = Path(self.directory.name)
-        self.helper = Path(__file__).resolve().parent.parent / "dev-tag"
+        self.helper = Path(__file__).resolve().parent.parent / "scripts" / "dev-tag"
         self.git("init", "-q")
         self.git("config", "user.name", "Dev Tools Test")
         self.git("config", "user.email", "dev-tools@example.com")
