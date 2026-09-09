@@ -1,12 +1,18 @@
-# dev-port
+# dev-tools
 
-Persistent, named TCP ports for local development on macOS and Linux.
-Requires Python 3.8 or newer; uses only the standard library.
+Small, reusable development helpers for macOS and Linux. The tools require
+Python 3.8 or newer and use only the standard library.
+
+## Tools
+
+### `dev-port`
+
+Persistent, named TCP ports for local development.
 
 ```sh
-python3 dev-port.py postgres
-python3 dev-port.py app
-python3 dev-port.py pdf
+./dev-port postgres
+./dev-port app
+./dev-port pdf
 ```
 
 The first lookup binds a loopback socket to port zero, lets the OS choose an
@@ -14,16 +20,11 @@ available port, and saves it by name. Later calls return the saved port, includi
 when your service is running. Each project's current directory gets its own
 `.dev-ports.json`. Use `--file PATH` to choose another state file.
 
-This lets `make postgres`, `make serve`, and `make open` run independently while
-agreeing on the same ports.
-
-## Commands
-
 ```sh
-python3 dev-port.py postgres              # Get or allocate a port
-python3 dev-port.py postgres --port 5433  # Save a fixed port
-python3 dev-port.py --reset               # Clear assignments after stopping services
-python3 dev-port.py --version
+./dev-port postgres              # Get or allocate a port
+./dev-port postgres --port 5433  # Save a fixed port
+./dev-port --reset               # Clear assignments after stopping services
+./dev-port --version
 ```
 
 Fixed ports are validated but are not checked for availability. Two service names
@@ -34,55 +35,94 @@ Ports are released after allocation. They are not reserved between lookup and
 startup. Separate projects have independent assignments, not a global reservation
 pool. Stop services before resetting or changing their ports.
 
-## Use from Make
+A separate lock file serializes concurrent readers and writers. The JSON state is
+replaced atomically. Invalid state produces an error and remains unchanged;
+`--reset` explicitly clears it. Do not delete the lock file while callers run.
 
-Keep a copy of `dev-port.py` in your project's `scripts/` directory, pinned to a
-release commit. No network access or installation is needed during normal use.
-Run Make from the project root (or use `make -C /path/to/project`).
+### `open-browser`
+
+Wait for an HTTP or HTTPS endpoint to respond, then open it in the default browser.
+This is useful for development commands that start a server and browser together.
+
+```sh
+./open-browser http://127.0.0.1:8080/
+./open-browser --timeout 30 http://127.0.0.1:8080/
+./open-browser --version
+```
+
+Any HTTP response means the endpoint is reachable, including error responses such
+as 401 or 404. Connection errors are retried until the timeout expires.
+
+## Releases
+
+Release assets are executable commands without a `.py` suffix:
+
+```text
+dev-port
+open-browser
+checksums.txt
+```
+
+A pushed `v*` tag creates the GitHub release and uploads all three assets.
+
+For example:
+
+```sh
+git tag v0.2.0
+git push origin v0.2.0
+```
+
+To install a pinned release into a repository-local `bin` directory:
+
+```sh
+version=v0.2.0
+mkdir -p bin
+curl -fL "https://github.com/gi8lino/dev-tools/releases/download/${version}/dev-port" -o bin/dev-port
+curl -fL "https://github.com/gi8lino/dev-tools/releases/download/${version}/open-browser" -o bin/open-browser
+chmod +x bin/dev-port bin/open-browser
+```
+
+This makes the tools easy to pin with Renovate:
 
 ```make
-# Set this to the full Git commit of the desired dev-port release.
-DEV_PORT_REF := RELEASE_COMMIT
+# renovate: datasource=github-releases depName=gi8lino/dev-tools
+DEV_TOOLS_VERSION ?= v0.2.0
+```
 
-dev-port = $(or $(shell python3 scripts/dev-port.py $(1)),$(error Could not resolve port for $(1)))
+## Use from Make
+
+```make
+LOCALBIN ?= $(CURDIR)/bin
+DEV_PORT := $(LOCALBIN)/dev-port
+OPEN_BROWSER := $(LOCALBIN)/open-browser
+
+# renovate: datasource=github-releases depName=gi8lino/dev-tools
+DEV_TOOLS_VERSION ?= v0.2.0
+
+dev-port = $(or $(shell $(DEV_PORT) $(1)),$(error Could not resolve port for $(1)))
 APP_PORT ?= $(call dev-port,app)
 DB_PORT ?= $(call dev-port,postgres)
 
-.PHONY: ports ports-reset dev-port-update
+.PHONY: ports ports-reset open
 ports:
-	@python3 scripts/dev-port.py app --port "$(APP_PORT)" > /dev/null
-	@python3 scripts/dev-port.py postgres --port "$(DB_PORT)" > /dev/null
+	@$(DEV_PORT) app --port "$(APP_PORT)" > /dev/null
+	@$(DEV_PORT) postgres --port "$(DB_PORT)" > /dev/null
 	@echo "App: http://127.0.0.1:$(APP_PORT)/"
 	@echo "Postgres: 127.0.0.1:$(DB_PORT)"
 
 ports-reset:
-	python3 scripts/dev-port.py --reset
+	$(DEV_PORT) --reset
 
-dev-port-update:
-	@set -eu; mkdir -p scripts; tmp=$$(mktemp scripts/dev-port.py.XXXXXX); \
-	trap 'rm -f "$$tmp"' EXIT; \
-	curl --fail --silent --show-error --location \
-	  "https://raw.githubusercontent.com/gi8lino/dev-port/$(DEV_PORT_REF)/dev-port.py" > "$$tmp"; \
-	chmod 644 "$$tmp"; mv "$$tmp" scripts/dev-port.py
+open:
+	$(OPEN_BROWSER) "http://127.0.0.1:$(APP_PORT)/"
 ```
 
-Replace `RELEASE_COMMIT` with the full commit behind your chosen release, then run
-`make dev-port-update`. Commit the script and the pin together. To upgrade, change
-the pin, run the update target, and review the diff. The `ports` target also saves
-Make command-line overrides for future invocations.
-
-Add these entries to each project's `.gitignore`:
+Add these entries to projects using `dev-port`:
 
 ```gitignore
 /.dev-ports.json
 /.dev-ports.json.lock
 ```
-
-## State safety
-
-A separate lock file serializes concurrent readers and writers. The JSON state
-is replaced atomically. Invalid state produces an error and remains unchanged;
-`--reset` explicitly clears it. Do not delete the lock file while callers run.
 
 ## Development
 
@@ -90,5 +130,4 @@ is replaced atomically. Invalid state produces an error and remains unchanged;
 make test
 ```
 
-Tests cover concurrent callers, reuse while occupied, fixed assignments, corrupt
-state, reset, and isolation between projects. CI runs on Linux and macOS.
+CI runs the test suite on Linux and macOS.

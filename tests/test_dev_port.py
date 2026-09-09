@@ -16,7 +16,7 @@ class DevPortTests(unittest.TestCase):
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
         self.state = Path(self.directory.name) / "ports.json"
-        self.helper = Path(__file__).resolve().parent.parent / "dev-port.py"
+        self.helper = Path(__file__).resolve().parent.parent / "dev-port"
 
     def call(self, *args, check=True):
         return subprocess.run(
@@ -76,7 +76,7 @@ class DevPortTests(unittest.TestCase):
             [sys.executable, str(self.helper), "--version"], cwd=self.directory.name,
             text=True, capture_output=True, check=True,
         )
-        self.assertEqual(result.stdout.strip(), "dev-port 0.1.0")
+        self.assertEqual(result.stdout.strip(), "dev-port 0.2.0")
         self.assertEqual(list(Path(self.directory.name).iterdir()), [])
 
     def test_state_files_are_independent(self):
