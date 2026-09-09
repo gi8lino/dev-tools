@@ -1,0 +1,46 @@
+#!/usr/bin/env python3
+"""Install and pin a Go tool in a local bin directory."""
+
+# Upstream: https://github.com/gi8lino/dev-tools
+# Version: 0.3.0
+
+import argparse
+import os
+from pathlib import Path
+import subprocess
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--version", action="version", version="go-install-tool 0.3.0")
+    parser.add_argument("--target", required=True, type=Path, help="stable binary path")
+    parser.add_argument("--package", required=True, help="Go package to install")
+    parser.add_argument("--tool-version", required=True, help="Go module version")
+    args = parser.parse_args()
+
+    target = args.target
+    versioned = target.with_name(f"{target.name}-{args.tool_version}")
+    package = f"{args.package}@{args.tool_version}"
+
+    try:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if not versioned.is_file():
+            if target.exists() or target.is_symlink():
+                target.unlink()
+            print(f"Downloading {package}")
+            environment = os.environ.copy()
+            environment["GOBIN"] = str(target.parent.resolve())
+            subprocess.run(["go", "install", package], check=True, env=environment)
+            if not target.is_file():
+                raise RuntimeError(f"go install did not create {target}")
+            target.replace(versioned)
+
+        if target.exists() or target.is_symlink():
+            target.unlink()
+        target.symlink_to(versioned.name)
+    except (OSError, RuntimeError, subprocess.CalledProcessError) as error:
+        parser.exit(1, f"go-install-tool: {error}\n")
+
+
+if __name__ == "__main__":
+    main()

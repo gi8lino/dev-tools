@@ -12,21 +12,23 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
 
       - name: Verify versions
         run: |
           version="${GITHUB_REF_NAME#v}"
           test "$(python3 dev-port --version)" = "dev-port ${version}"
           test "$(python3 open-browser --version)" = "open-browser ${version}"
+          test "$(python3 dev-tag --version)" = "dev-tag ${version}"
+          test "$(python3 go-install-tool --version)" = "go-install-tool ${version}"
 
       - name: Prepare assets
         run: |
           mkdir -p dist
-          cp dev-port open-browser dist/
-          chmod +x dist/dev-port dist/open-browser
+          cp dev-port open-browser dev-tag go-install-tool dist/
+          chmod +x dist/dev-port dist/open-browser dist/dev-tag dist/go-install-tool
           cd dist
-          sha256sum dev-port open-browser > checksums.txt
+          sha256sum dev-port open-browser dev-tag go-install-tool > checksums.txt
 
       - name: Create release
         env:
@@ -35,6 +37,8 @@ jobs:
           gh release create "$GITHUB_REF_NAME" \
             dist/dev-port \
             dist/open-browser \
+            dist/dev-tag \
+            dist/go-install-tool \
             dist/checksums.txt \
             --generate-notes \
             --verify-tag

@@ -53,6 +53,39 @@ This is useful for development commands that start a server and browser together
 Any HTTP response means the endpoint is reachable, including error responses such
 as 401 or 404. Connection errors are retried until the timeout expires.
 
+### `dev-tag`
+
+Create lightweight semantic version tags using the latest valid `X.Y.Z` tag in the
+repository. The default prefix is `v`.
+
+```sh
+./dev-tag current
+./dev-tag patch
+./dev-tag minor
+./dev-tag major
+./dev-tag --prefix "" patch
+```
+
+With no matching tags, `current` prints `0.0.0` and the first patch tag is `v0.0.1`.
+Unrelated tags and non-semantic-version tags are ignored. `dev-tag` creates the tag
+locally; pushing tags remains an explicit repository action.
+
+### `go-install-tool`
+
+Install a pinned Go tool into a local bin directory, keep the versioned binary, and
+link the stable binary name to it.
+
+```sh
+./go-install-tool \
+  --target ./bin/golangci-lint \
+  --package github.com/golangci/golangci-lint/v2/cmd/golangci-lint \
+  --tool-version v2.13.2
+```
+
+The example creates `bin/golangci-lint-v2.13.2` and links
+`bin/golangci-lint` to it. Existing versioned binaries are reused instead of being
+downloaded again.
+
 ## Releases
 
 Release assets are executable commands without a `.py` suffix:
@@ -60,33 +93,37 @@ Release assets are executable commands without a `.py` suffix:
 ```text
 dev-port
 open-browser
+dev-tag
+go-install-tool
 checksums.txt
 ```
 
-A pushed `v*` tag creates the GitHub release and uploads all three assets.
+A pushed `v*` tag creates the GitHub release and uploads the four tools plus the
+checksum file.
 
 For example:
 
 ```sh
-git tag v0.2.0
-git push origin v0.2.0
+git tag v0.3.0
+git push origin v0.3.0
 ```
 
 To install a pinned release into a repository-local `bin` directory:
 
 ```sh
-version=v0.2.0
+version=v0.3.0
 mkdir -p bin
-curl -fL "https://github.com/gi8lino/dev-tools/releases/download/${version}/dev-port" -o bin/dev-port
-curl -fL "https://github.com/gi8lino/dev-tools/releases/download/${version}/open-browser" -o bin/open-browser
-chmod +x bin/dev-port bin/open-browser
+for tool in dev-port open-browser dev-tag go-install-tool; do
+  curl -fL "https://github.com/gi8lino/dev-tools/releases/download/${version}/${tool}" -o "bin/${tool}"
+  chmod +x "bin/${tool}"
+done
 ```
 
 This makes the tools easy to pin with Renovate:
 
 ```make
 # renovate: datasource=github-releases depName=gi8lino/dev-tools
-DEV_TOOLS_VERSION ?= v0.2.0
+DEV_TOOLS_VERSION ?= v0.3.0
 ```
 
 ## Use from Make
@@ -95,15 +132,17 @@ DEV_TOOLS_VERSION ?= v0.2.0
 LOCALBIN ?= $(CURDIR)/bin
 DEV_PORT := $(LOCALBIN)/dev-port
 OPEN_BROWSER := $(LOCALBIN)/open-browser
+DEV_TAG := $(LOCALBIN)/dev-tag
+GO_INSTALL_TOOL := $(LOCALBIN)/go-install-tool
 
 # renovate: datasource=github-releases depName=gi8lino/dev-tools
-DEV_TOOLS_VERSION ?= v0.2.0
+DEV_TOOLS_VERSION ?= v0.3.0
 
 dev-port = $(or $(shell $(DEV_PORT) $(1)),$(error Could not resolve port for $(1)))
 APP_PORT ?= $(call dev-port,app)
 DB_PORT ?= $(call dev-port,postgres)
 
-.PHONY: ports ports-reset open
+.PHONY: ports ports-reset open patch minor major tag push
 ports:
 	@$(DEV_PORT) app --port "$(APP_PORT)" > /dev/null
 	@$(DEV_PORT) postgres --port "$(DB_PORT)" > /dev/null
@@ -115,6 +154,37 @@ ports-reset:
 
 open:
 	$(OPEN_BROWSER) "http://127.0.0.1:$(APP_PORT)/"
+
+patch:
+	$(DEV_TAG) patch
+
+minor:
+	$(DEV_TAG) minor
+
+major:
+	$(DEV_TAG) major
+
+tag:
+	@echo "Latest version: $$($(DEV_TAG) current)"
+
+push:
+	git push --tags
+```
+
+A Go tool can use the shared installer instead of carrying a Make macro:
+
+```make
+GOLANGCI_LINT := $(LOCALBIN)/golangci-lint
+
+# renovate: datasource=github-releases depName=golangci/golangci-lint
+GOLANGCI_LINT_VERSION ?= v2.13.2
+
+.PHONY: golangci-lint
+golangci-lint: dev-tools
+	$(GO_INSTALL_TOOL) \
+		--target "$(GOLANGCI_LINT)" \
+		--package github.com/golangci/golangci-lint/v2/cmd/golangci-lint \
+		--tool-version "$(GOLANGCI_LINT_VERSION)"
 ```
 
 Add these entries to projects using `dev-port`:

@@ -1,0 +1,75 @@
+#!/usr/bin/env python3
+"""Create semantic version tags for a Git repository."""
+
+# Upstream: https://github.com/gi8lino/dev-tools
+# Version: 0.3.0
+
+import argparse
+import subprocess
+
+
+def git(*args):
+    result = subprocess.run(["git", *args], text=True, capture_output=True)
+    if result.returncode != 0:
+        message = result.stderr.strip() or result.stdout.strip() or "git command failed"
+        raise RuntimeError(message)
+    return result.stdout.strip()
+
+
+def parse_version(value):
+    parts = value.split(".")
+    if len(parts) != 3 or any(not part.isdigit() for part in parts):
+        return None
+    return tuple(int(part) for part in parts)
+
+
+def latest_version(prefix):
+    versions = []
+    for tag in git("tag", "--list").splitlines():
+        if not tag.startswith(prefix):
+            continue
+        parsed = parse_version(tag[len(prefix):])
+        if parsed is not None:
+            versions.append(parsed)
+    return max(versions, default=(0, 0, 0))
+
+
+def format_version(version):
+    return ".".join(str(part) for part in version)
+
+
+def next_version(version, bump):
+    major, minor, patch = version
+    if bump == "patch":
+        return major, minor, patch + 1
+    if bump == "minor":
+        return major, minor + 1, 0
+    return major + 1, 0, 0
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--version", action="version", version="dev-tag 0.3.0")
+    parser.add_argument("--prefix", default="v", help="tag prefix, default: v")
+    parser.add_argument("command", choices=("current", "patch", "minor", "major"))
+    args = parser.parse_args()
+
+    try:
+        current = latest_version(args.prefix)
+        if args.command == "current":
+            if current == (0, 0, 0):
+                print("0.0.0")
+            else:
+                print(f"{args.prefix}{format_version(current)}")
+            return
+
+        version = next_version(current, args.command)
+        tag = f"{args.prefix}{format_version(version)}"
+        git("tag", tag)
+        print(f"Tagged {tag}")
+    except (OSError, RuntimeError) as error:
+        parser.exit(1, f"dev-tag: {error}\n")
+
+
+if __name__ == "__main__":
+    main()
