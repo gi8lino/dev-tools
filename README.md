@@ -1,8 +1,6 @@
 # dev-tools
 
-Small, reusable development helpers for macOS and Linux. The tools require
-Python 3.8 or newer and use only the standard library. Maintained source scripts
-live in `scripts/`; release assets keep their short executable names.
+Small, reusable development helpers for macOS and Linux. The tools require Python 3.8 or newer and use only the standard library. Maintained source scripts live in `scripts/`; release assets keep their short executable names.
 
 ## Tools
 
@@ -16,10 +14,7 @@ Persistent, named TCP ports for local development.
 ./scripts/dev-port pdf
 ```
 
-The first lookup binds a loopback socket to port zero, lets the OS choose an
-available port, and saves it by name. Later calls return the saved port, including
-when your service is running. Each project's current directory gets its own
-`.dev-ports.json`. Use `--file PATH` to choose another state file.
+The first lookup binds a loopback socket to port zero, lets the OS choose an available port, and saves it by name. Later calls return the saved port, including when your service is running. Each project's current directory gets its own `.dev-ports.json`. Use `--file PATH` to choose another state file.
 
 ```sh
 ./scripts/dev-port postgres              # Get or allocate a port
@@ -28,22 +23,15 @@ when your service is running. Each project's current directory gets its own
 ./scripts/dev-port --version
 ```
 
-Fixed ports are validated but are not checked for availability. Two service names
-in one state file cannot share a port. A saved port is never silently changed if
-occupied; stop the conflicting service or explicitly update the assignment.
+Fixed ports are validated but are not checked for availability. Two service names in one state file cannot share a port. A saved port is never silently changed if occupied; stop the conflicting service or explicitly update the assignment.
 
-Ports are released after allocation. They are not reserved between lookup and
-startup. Separate projects have independent assignments, not a global reservation
-pool. Stop services before resetting or changing their ports.
+Ports are released after allocation. They are not reserved between lookup and startup. Separate projects have independent assignments, not a global reservation pool. Stop services before resetting or changing their ports.
 
-A separate lock file serializes concurrent readers and writers. The JSON state is
-replaced atomically. Invalid state produces an error and remains unchanged;
-`--reset` explicitly clears it. Do not delete the lock file while callers run.
+A separate lock file serializes concurrent readers and writers. The JSON state is replaced atomically. Invalid state produces an error and remains unchanged; `--reset` explicitly clears it. Do not delete the lock file while callers run.
 
 ### `open-browser`
 
-Wait for an HTTP or HTTPS endpoint to respond, then open it in the default browser.
-This is useful for development commands that start a server and browser together.
+Wait for an HTTP or HTTPS endpoint to respond, then open it in the default browser. This is useful for development commands that start a server and browser together.
 
 ```sh
 ./scripts/open-browser http://127.0.0.1:8080/
@@ -51,13 +39,11 @@ This is useful for development commands that start a server and browser together
 ./scripts/open-browser --version
 ```
 
-Any HTTP response means the endpoint is reachable, including error responses such
-as 401 or 404. Connection errors are retried until the timeout expires.
+Any HTTP response means the endpoint is reachable, including error responses such as 401 or 404. Connection errors are retried until the timeout expires.
 
 ### `dev-tag`
 
-Create lightweight semantic version tags using the latest valid `X.Y.Z` tag in the
-repository. The default prefix is `v`.
+Create lightweight semantic version tags using the latest valid `X.Y.Z` tag in the repository. The default prefix is `v`.
 
 ```sh
 ./scripts/dev-tag current
@@ -67,9 +53,7 @@ repository. The default prefix is `v`.
 ./scripts/dev-tag --prefix "" patch
 ```
 
-With no matching tags, `current` prints `0.0.0` and the first patch tag is `v0.0.1`.
-Unrelated tags and non-semantic-version tags are ignored. `dev-tag` creates the tag
-locally; pushing tags remains an explicit repository action.
+With no matching tags, `current` prints `0.0.0` and the first patch tag is `v0.0.1`. Unrelated tags and non-semantic-version tags are ignored. `dev-tag` creates the tag locally; pushing tags remains an explicit repository action.
 
 ### `go-install-tool`
 
@@ -83,9 +67,7 @@ link the stable binary name to it.
   --tool-version v2.13.2
 ```
 
-The example creates `bin/golangci-lint-v2.13.2` and links
-`bin/golangci-lint` to it. Existing versioned binaries are reused instead of being
-downloaded again.
+The example creates `bin/golangci-lint-v2.13.2` and links `bin/golangci-lint` to it. Existing versioned binaries are reused instead of being downloaded again.
 
 ## Releases
 
@@ -99,8 +81,7 @@ go-install-tool
 checksums.txt
 ```
 
-A pushed `v*` tag creates the GitHub release and uploads the four tools plus the
-checksum file.
+A pushed `v*` tag creates the GitHub release and uploads the four tools plus the checksum file.
 
 For example:
 
@@ -145,31 +126,31 @@ DB_PORT ?= $(call dev-port,postgres)
 
 .PHONY: ports ports-reset open patch minor major tag push
 ports:
-	@$(DEV_PORT) app --port "$(APP_PORT)" > /dev/null
-	@$(DEV_PORT) postgres --port "$(DB_PORT)" > /dev/null
-	@echo "App: http://127.0.0.1:$(APP_PORT)/"
-	@echo "Postgres: 127.0.0.1:$(DB_PORT)"
+    @$(DEV_PORT) app --port "$(APP_PORT)" > /dev/null
+    @$(DEV_PORT) postgres --port "$(DB_PORT)" > /dev/null
+    @echo "App: http://127.0.0.1:$(APP_PORT)/"
+    @echo "Postgres: 127.0.0.1:$(DB_PORT)"
 
 ports-reset:
-	$(DEV_PORT) --reset
+    $(DEV_PORT) --reset
 
 open:
-	$(OPEN_BROWSER) "http://127.0.0.1:$(APP_PORT)/"
+    $(OPEN_BROWSER) "http://127.0.0.1:$(APP_PORT)/"
 
 patch:
-	$(DEV_TAG) patch
+    $(DEV_TAG) patch
 
 minor:
-	$(DEV_TAG) minor
+    $(DEV_TAG) minor
 
 major:
-	$(DEV_TAG) major
+    $(DEV_TAG) major
 
 tag:
-	@echo "Latest version: $$($(DEV_TAG) current)"
+    @echo "Latest version: $$($(DEV_TAG) current)"
 
 push:
-	git push --tags
+    git push --tags
 ```
 
 A Go tool can use the shared installer instead of carrying a Make macro:
@@ -182,13 +163,13 @@ GOLANGCI_LINT_VERSION ?= v2.13.2
 
 .PHONY: golangci-lint
 golangci-lint: dev-tools
-	$(GO_INSTALL_TOOL) \
-		--target "$(GOLANGCI_LINT)" \
-		--package github.com/golangci/golangci-lint/v2/cmd/golangci-lint \
-		--tool-version "$(GOLANGCI_LINT_VERSION)"
+    $(GO_INSTALL_TOOL) \
+        --target "$(GOLANGCI_LINT)" \
+        --package github.com/golangci/golangci-lint/v2/cmd/golangci-lint \
+        --tool-version "$(GOLANGCI_LINT_VERSION)"
 ```
 
-Add these entries to projects using `dev-port`:
+Add these entries to projects using `dev-tools`:
 
 ```gitignore
 /.dev-ports.json
