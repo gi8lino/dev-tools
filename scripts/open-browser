@@ -2,7 +2,7 @@
 """Wait for a local HTTP endpoint and open it in the default browser."""
 
 # Upstream: https://github.com/gi8lino/dev-tools
-# Version: 0.3.0
+# Version: __VERSION__
 
 import argparse
 import time
@@ -37,7 +37,7 @@ def wait_for_url(url, timeout, interval):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--version", action="version", version="open-browser 0.3.0")
+    parser.add_argument("--version", action="version", version="open-browser __VERSION__")
     parser.add_argument("--timeout", type=float, default=60.0, help="seconds to wait for the endpoint")
     parser.add_argument("--interval", type=float, default=0.25, help="seconds between connection attempts")
     parser.add_argument("url", help="HTTP or HTTPS URL to open")

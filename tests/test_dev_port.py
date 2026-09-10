@@ -76,7 +76,7 @@ class DevPortTests(unittest.TestCase):
             [sys.executable, str(self.helper), "--version"], cwd=self.directory.name,
             text=True, capture_output=True, check=True,
         )
-        self.assertEqual(result.stdout.strip(), "dev-port 0.3.0")
+        self.assertEqual(result.stdout.strip(), "dev-port __VERSION__")
         self.assertEqual(list(Path(self.directory.name).iterdir()), [])
 
     def test_state_files_are_independent(self):

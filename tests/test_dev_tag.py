@@ -54,7 +54,7 @@ class DevTagTests(unittest.TestCase):
         self.assertEqual(self.call("patch").stdout.strip(), "Tagged v1.4.3")
 
     def test_version(self):
-        self.assertEqual(self.call("--version").stdout.strip(), "dev-tag 0.3.0")
+        self.assertEqual(self.call("--version").stdout.strip(), "dev-tag __VERSION__")
 
 
 if __name__ == "__main__":

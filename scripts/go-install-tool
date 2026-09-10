@@ -2,7 +2,7 @@
 """Install and pin a Go tool in a local bin directory."""
 
 # Upstream: https://github.com/gi8lino/dev-tools
-# Version: 0.3.0
+# Version: __VERSION__
 
 import argparse
 import os
@@ -12,7 +12,7 @@ import subprocess
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--version", action="version", version="go-install-tool 0.3.0")
+    parser.add_argument("--version", action="version", version="go-install-tool __VERSION__")
     parser.add_argument("--target", required=True, type=Path, help="stable binary path")
     parser.add_argument("--package", required=True, help="Go package to install")
     parser.add_argument("--tool-version", required=True, help="Go module version")

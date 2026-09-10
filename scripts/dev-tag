@@ -2,7 +2,7 @@
 """Create semantic version tags for a Git repository."""
 
 # Upstream: https://github.com/gi8lino/dev-tools
-# Version: 0.3.0
+# Version: __VERSION__
 
 import argparse
 import subprocess
@@ -49,7 +49,7 @@ def next_version(version, bump):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--version", action="version", version="dev-tag 0.3.0")
+    parser.add_argument("--version", action="version", version="dev-tag __VERSION__")
     parser.add_argument("--prefix", default="v", help="tag prefix, default: v")
     parser.add_argument("command", choices=("current", "patch", "minor", "major"))
     args = parser.parse_args()

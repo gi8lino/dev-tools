@@ -84,7 +84,7 @@ class GoInstallToolTests(unittest.TestCase):
             [sys.executable, str(self.helper), "--version"],
             text=True, capture_output=True, check=True,
         )
-        self.assertEqual(result.stdout.strip(), "go-install-tool 0.3.0")
+        self.assertEqual(result.stdout.strip(), "go-install-tool __VERSION__")
 
 
 if __name__ == "__main__":

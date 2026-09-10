@@ -2,7 +2,7 @@
 """Display documented Makefile targets grouped by section."""
 
 # Upstream: https://github.com/gi8lino/dev-tools
-# Version: 0.3.0
+# Version: __VERSION__
 
 import argparse
 from pathlib import Path
@@ -59,7 +59,7 @@ def main():
     parser.add_argument(
         "--version",
         action="version",
-        version="make-help 0.3.0",
+        version="make-help __VERSION__",
     )
     parser.add_argument(
         "makefiles",

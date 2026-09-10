@@ -2,7 +2,7 @@
 """Persist named development ports per project (macOS and Linux)."""
 
 # Upstream: https://github.com/gi8lino/dev-tools
-# Version: 0.3.0
+# Version: __VERSION__
 
 import argparse
 import fcntl
@@ -15,7 +15,7 @@ import tempfile
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--version", action="version", version="dev-port 0.3.0")
+    parser.add_argument("--version", action="version", version="dev-port __VERSION__")
     parser.add_argument("name", nargs="?", help="service name, such as app or postgres")
     parser.add_argument("--file", type=Path, default=Path.cwd() / ".dev-ports.json")
     parser.add_argument("--port", type=int, help="explicitly save a fixed port")

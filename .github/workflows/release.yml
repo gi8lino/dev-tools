@@ -11,24 +11,79 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v7
 
-      - name: Verify versions
+      - name: Prepare release assets
         run: |
-          version="${GITHUB_REF_NAME#v}"
-          test "$(python3 scripts/dev-port --version)" = "dev-port ${version}"
-          test "$(python3 scripts/open-browser --version)" = "open-browser ${version}"
-          test "$(python3 scripts/dev-tag --version)" = "dev-tag ${version}"
-          test "$(python3 scripts/go-install-tool --version)" = "go-install-tool ${version}"
+          set -eu
 
-      - name: Prepare assets
-        run: |
+          version="${GITHUB_REF_NAME#v}"
+
           mkdir -p dist
-          cp scripts/dev-port scripts/open-browser scripts/dev-tag scripts/go-install-tool dist/
-          chmod +x dist/dev-port dist/open-browser dist/dev-tag dist/go-install-tool
+
+          cp \
+            scripts/dev-port \
+            scripts/open-browser \
+            scripts/dev-tag \
+            scripts/make-help \
+            scripts/go-install-tool \
+            dist/
+
+          python3 - "$version" <<'PY'
+          from pathlib import Path
+          import sys
+
+          version = sys.argv[1]
+
+          for path in Path("dist").iterdir():
+              if not path.is_file():
+                  continue
+
+              content = path.read_text()
+
+              if "__VERSION__" not in content:
+                  raise SystemExit(f"{path}: missing __VERSION__ placeholder")
+
+              path.write_text(content.replace("__VERSION__", version))
+          PY
+
+          chmod +x \
+            dist/dev-port \
+            dist/open-browser \
+            dist/dev-tag \
+            dist/make-help \
+            dist/go-install-tool
+
+      - name: Verify release assets
+        run: |
+          set -eu
+
+          version="${GITHUB_REF_NAME#v}"
+
+          test "$(dist/dev-port --version)" = "dev-port ${version}"
+          test "$(dist/open-browser --version)" = "open-browser ${version}"
+          test "$(dist/dev-tag --version)" = "dev-tag ${version}"
+          test "$(dist/make-help --version)" = "make-help ${version}"
+          test "$(dist/go-install-tool --version)" = "go-install-tool ${version}"
+
+          if grep -R "__VERSION__" dist/; then
+            echo "release assets still contain __VERSION__ placeholders"
+            exit 1
+          fi
+
+      - name: Create checksums
+        run: |
           cd dist
-          sha256sum dev-port open-browser dev-tag go-install-tool > checksums.txt
+
+          sha256sum \
+            dev-port \
+            open-browser \
+            dev-tag \
+            make-help \
+            go-install-tool \
+            > checksums.txt
 
       - name: Create release
         env:
@@ -38,6 +93,7 @@ jobs:
             dist/dev-port \
             dist/open-browser \
             dist/dev-tag \
+            dist/make-help \
             dist/go-install-tool \
             dist/checksums.txt \
             --generate-notes \

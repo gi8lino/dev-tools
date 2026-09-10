@@ -85,7 +85,7 @@ class OpenBrowserTests(unittest.TestCase):
 
     def test_version_does_not_open_browser(self):
         result = self.call("--version")
-        self.assertEqual(result.stdout.strip(), "open-browser 0.3.0")
+        self.assertEqual(result.stdout.strip(), "open-browser __VERSION__")
         self.assertFalse(self.capture.exists())
 
 
