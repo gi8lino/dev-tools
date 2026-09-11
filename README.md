@@ -8,13 +8,13 @@ Full documentation: https://gi8lino.github.io/dev-tools/
 
 Keep `bin/dev-tools.mk` in the consuming repository and include only the modules the project needs.
 
-| Module | Include | Provides |
-| --- | --- | --- |
-| Core | `bin/dev-tools.mk` | Shared download/run helpers, `go-install-tool`, and `github-release-install` |
-| Tagging | `$(call dev-tools-module,tag)` | `current`, `patch`, `minor`, `major`, `push` |
-| Ports | `$(call dev-tools-module,port)` | Persistent named development ports |
-| Browser | `$(call dev-tools-module,browser)` | Wait for and open a local HTTP endpoint |
-| Help | `$(call dev-tools-module,help)` | Generated `make help` output |
+| Module  | Include                            | Provides                                                                     |
+| ------- | ---------------------------------- | ---------------------------------------------------------------------------- |
+| Core    | `bin/dev-tools.mk`                 | Shared download/run helpers, `go-install-tool`, and `github-release-install` |
+| Tagging | `$(call dev-tools-module,tag)`     | `current`, `patch`, `minor`, `major`, `push`                                 |
+| Ports   | `$(call dev-tools-module,port)`    | Persistent named development ports                                           |
+| Browser | `$(call dev-tools-module,browser)` | Wait for and open a local HTTP endpoint                                      |
+| Help    | `$(call dev-tools-module,help)`    | Generated `make help` output                                                 |
 
 ## Quick start
 
@@ -44,3 +44,7 @@ include $(call dev-tools-module,help)
 ```
 
 Missing feature modules and executables are downloaded automatically from the pinned release when Make needs them.
+
+# License
+
+ScreenDeck is licensed under the [Apache License, Version 2.0](LICENSE).
