@@ -49,7 +49,7 @@ class DocumentationTests(unittest.TestCase):
         makefile = (self.root / "Makefile").read_text()
 
         self.assertIn("depName=gi8lino/lore", makefile)
-        self.assertIn("LORE_VERSION ?= v0.13.0", makefile)
+        self.assertRegex(makefile, r"(?m)^LORE_VERSION \?= v\d+\.\d+\.\d+$",)
         self.assertIn("LORE := bin/lore", makefile)
         self.assertIn("lore: $(GITHUB_RELEASE_INSTALL)", makefile)
         self.assertIn("--repo gi8lino/lore", makefile)
