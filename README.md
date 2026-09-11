@@ -2,7 +2,7 @@
 
 Small, reusable development helpers for macOS and Linux. The tools require Python 3.8 or newer and use only the standard library.
 
-Maintained source scripts live in `scripts/`; release assets keep their short executable names. GNU Make integration is split into a small core plus optional feature modules.
+Executable source tools live in `scripts/`; GNU Make modules live in `make/`. Release assets keep their short names. GNU Make integration is split into a small core plus optional feature modules.
 
 ## Tools
 
@@ -92,14 +92,15 @@ The example creates `bin/golangci-lint-v2.13.2` and links `bin/golangci-lint` to
 
 ## GNU Make integration
 
-The Make integration is modular:
+The Make integration is modular and its source files live under `make/`:
 
 ```text
-dev-tools.mk          Core helpers and go-install-tool
-dev-tools-tag.mk      Semantic-version tag targets
-dev-tools-port.mk     Named development-port integration
-dev-tools-browser.mk  Browser launcher integration
-dev-tools-help.mk     Generated Make help target
+make/
+├── dev-tools.mk          Core helpers and go-install-tool
+├── dev-tools-tag.mk      Semantic-version tag targets
+├── dev-tools-port.mk     Named development-port integration
+├── dev-tools-browser.mk  Browser launcher integration
+└── dev-tools-help.mk     Generated Make help target
 ```
 
 A consuming repository only needs to keep the core file. Feature modules and their executables are downloaded from the pinned release when Make needs them.
@@ -332,12 +333,14 @@ checksums.txt
 
 A pushed `v*` tag creates the GitHub release. The workflow replaces each `__VERSION__` placeholder, verifies the executables and Make modules, generates checksums, and uploads the complete asset set.
 
-This repository uses the same modular Make integration itself:
+This repository uses the same modular Make integration itself while keeping executables and Make modules separate:
 
 ```makefile
-include scripts/dev-tools.mk
-include $(call dev-tools-module,tag)
-include $(call dev-tools-module,help)
+DEV_TOOLS_BIN := scripts
+
+include make/dev-tools.mk
+include make/dev-tools-tag.mk
+include make/dev-tools-help.mk
 ```
 
 Create release tags with:

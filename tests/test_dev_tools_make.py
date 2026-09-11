@@ -17,7 +17,7 @@ class DevToolsMakeTests(unittest.TestCase):
         self.bin = self.root / "bin"
         self.bin.mkdir()
 
-        self.source = Path(__file__).resolve().parent.parent / "scripts"
+        self.source = Path(__file__).resolve().parent.parent / "make"
         shutil.copy(self.source / "dev-tools.mk", self.bin / "dev-tools.mk")
 
         self.release = self.root / "release"

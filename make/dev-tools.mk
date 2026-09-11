@@ -4,7 +4,7 @@
 
 DEV_TOOLS_ROOT := $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))
 DEV_TOOLS_CACHE := $(if $(strip $(DEV_TOOLS_VERSION)),$(DEV_TOOLS_ROOT)/.dev-tools/$(DEV_TOOLS_VERSION))
-DEV_TOOLS_BIN := $(if $(DEV_TOOLS_CACHE),$(DEV_TOOLS_CACHE),$(DEV_TOOLS_ROOT))
+DEV_TOOLS_BIN ?= $(if $(DEV_TOOLS_CACHE),$(DEV_TOOLS_CACHE),$(DEV_TOOLS_ROOT))
 
 GO_INSTALL_TOOL := $(DEV_TOOLS_BIN)/go-install-tool
 

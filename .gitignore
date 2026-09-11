@@ -1,4 +1,5 @@
 __pycache__/
 *.pyc
+.DS_Store
 .dev-ports.json
 .dev-ports.json.lock

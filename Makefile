@@ -1,8 +1,10 @@
 .DEFAULT_GOAL := help
 
-include scripts/dev-tools.mk
-include $(call dev-tools-module,tag)
-include $(call dev-tools-module,help)
+DEV_TOOLS_BIN := scripts
+
+include make/dev-tools.mk
+include make/dev-tools-tag.mk
+include make/dev-tools-help.mk
 
 ##@ Development
 
