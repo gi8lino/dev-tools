@@ -2,7 +2,7 @@
 
 Small, reusable development helpers for macOS and Linux. The tools require Python 3.8 or newer and use only the standard library.
 
-Maintained source scripts live in `scripts/`; release assets keep their short executable names.
+Maintained source scripts live in `scripts/`; release assets keep their short executable names. `scripts/dev-tools.mk` provides the shared GNU Make integration.
 
 ## Tools
 
@@ -72,13 +72,13 @@ Generate Makefile help output from targets documented with `##`.
 ```makefile
 .DEFAULT_GOAL := help
 
-MAKE_HELP := scripts/make-help
+include bin/dev-tools.mk
 
-.PHONY: test help
-
+.PHONY: test
 test: ## Run all tests.
 	python3 -m unittest discover -s tests -v
 
+.PHONY: help
 help: ## Display this help.
 	@$(MAKE_HELP) $(MAKEFILE_LIST)
 ```
@@ -149,9 +149,40 @@ Install a pinned Go tool into a local bin directory, keep the versioned binary, 
 
 The example creates `bin/golangci-lint-v2.13.2` and links `bin/golangci-lint` to it. Existing versioned binaries are reused instead of being downloaded again.
 
+### `dev-tools.mk`
+
+Shared GNU Make integration for projects that install the release assets together in one directory.
+
+```makefile
+include bin/dev-tools.mk
+```
+
+The include determines its own directory and exposes the paths to the bundled tools:
+
+```makefile
+$(DEV_TOOLS_BIN)
+$(DEV_PORT)
+$(OPEN_BROWSER)
+$(DEV_TAG)
+$(MAKE_HELP)
+$(GO_INSTALL_TOOL)
+```
+
+It also provides `dev-port` for resolving named development ports and `run-tool` for executing a local tool while displaying only its executable name:
+
+```makefile
+APP_PORT ?= $(call dev-port,app)
+
+.PHONY: patch
+patch:
+	$(call run-tool,$(DEV_TAG),--prefix "v" patch)
+```
+
+For an include installed at `bin/dev-tools.mk`, `DEV_TOOLS_BIN` resolves to `bin`, so projects do not need their own `LOCALBIN` or repeated dev-tools path variables.
+
 ## Releases
 
-Release assets are executable commands without a `.py` suffix:
+Each release contains five executable tools, the shared Make include, and checksums:
 
 ```text
 dev-port
@@ -159,10 +190,11 @@ open-browser
 dev-tag
 make-help
 go-install-tool
+dev-tools.mk
 checksums.txt
 ```
 
-A pushed `v*` tag creates the GitHub release and uploads the five tools plus the checksum file.
+A pushed `v*` tag creates the GitHub release and uploads all six reusable assets plus the checksum file.
 
 Use the Make targets to create semantic version tags:
 
@@ -185,7 +217,7 @@ dev-tag --prefix "v" patch
 Tagged v0.4.1
 ```
 
-The actual executable lives at `scripts/dev-tag`, but the Makefile intentionally prints only the command name.
+The repository Makefile uses the same `scripts/dev-tools.mk` integration that consuming projects use, so the real `scripts/dev-tag` path remains hidden from the displayed command.
 
 Tags are created locally. Push them explicitly:
 
@@ -199,7 +231,7 @@ which runs:
 git push --tags
 ```
 
-The scripts contain their release version. Update the embedded version before creating a release tag. The release workflow verifies that all tool versions match the pushed tag and rejects inconsistent releases.
+The scripts and `dev-tools.mk` contain release version metadata. The release workflow replaces the version placeholder, verifies every asset, and rejects unresolved placeholders.
 
 To use tags without the default `v` prefix:
 
@@ -216,146 +248,126 @@ version=v0.4.0
 
 mkdir -p bin
 
-for tool in dev-port open-browser dev-tag make-help go-install-tool; do
+for asset in dev-port open-browser dev-tag make-help go-install-tool dev-tools.mk; do
   curl -fL \
-    "https://github.com/gi8lino/dev-tools/releases/download/${version}/${tool}" \
-    -o "bin/${tool}"
-  chmod +x "bin/${tool}"
+    "https://github.com/gi8lino/dev-tools/releases/download/${version}/${asset}" \
+    -o "bin/${asset}"
 done
+
+chmod +x \
+  bin/dev-port \
+  bin/open-browser \
+  bin/dev-tag \
+  bin/make-help \
+  bin/go-install-tool
 ```
 
-This makes the tools easy to pin with Renovate:
+This makes the release easy to pin with Renovate:
 
 ```makefile
 # renovate: datasource=github-releases depName=gi8lino/dev-tools
 DEV_TOOLS_VERSION ?= v0.4.0
 ```
 
+`dev-tools.mk` is the Make integration layer, not the initial downloader. Make sure it exists before parsing a Makefile that includes it, for example by installing the pinned release as part of the repository's bootstrap process.
+
 ## Use from Make
 
-A project can keep the tools in its local `bin` directory while invoking them through their full paths.
-
-Commands can still be displayed without leaking the absolute repository path by silencing the real invocation and printing the short command separately.
+Once the release is installed together in `bin`, projects only need to include the shared Make file. The include derives all bundled tool paths from its own location.
 
 ```makefile
 .DEFAULT_GOAL := help
 
-LOCALBIN ?= $(CURDIR)/bin
-
-DEV_PORT := $(LOCALBIN)/dev-port
-OPEN_BROWSER := $(LOCALBIN)/open-browser
-DEV_TAG := $(LOCALBIN)/dev-tag
-MAKE_HELP := $(LOCALBIN)/make-help
-GO_INSTALL_TOOL := $(LOCALBIN)/go-install-tool
+include bin/dev-tools.mk
 
 VERSION_PREFIX ?= v
 
 # renovate: datasource=github-releases depName=gi8lino/dev-tools
 DEV_TOOLS_VERSION ?= v0.4.0
 
-dev-port = $(or $(shell $(DEV_PORT) $(1)),$(error Could not resolve port for $(1)))
-
 APP_PORT ?= $(call dev-port,app)
 DB_PORT ?= $(call dev-port,postgres)
 
 ##@ Development
 
-.PHONY: ports ports-reset open
-
+.PHONY: ports
 ports: ## Show development ports.
 	@$(DEV_PORT) app --port "$(APP_PORT)" > /dev/null
 	@$(DEV_PORT) postgres --port "$(DB_PORT)" > /dev/null
 	@echo "App: http://127.0.0.1:$(APP_PORT)/"
 	@echo "Postgres: 127.0.0.1:$(DB_PORT)"
 
+.PHONY: ports-reset
 ports-reset: ## Reset development port assignments.
-	@echo "dev-port --reset"
-	@$(DEV_PORT) --reset
+	$(call run-tool,$(DEV_PORT),--reset)
 
+.PHONY: open
 open: ## Open the application in the default browser.
-	@echo 'open-browser "http://127.0.0.1:$(APP_PORT)/"'
-	@$(OPEN_BROWSER) "http://127.0.0.1:$(APP_PORT)/"
+	$(call run-tool,$(OPEN_BROWSER),"http://127.0.0.1:$(APP_PORT)/")
 
 ##@ Release
 
-.PHONY: current patch minor major push
-
+.PHONY: current
 current: ## Show the current semantic version tag.
-	@echo 'dev-tag --prefix "$(VERSION_PREFIX)" current'
-	@$(DEV_TAG) --prefix "$(VERSION_PREFIX)" current
+	$(call run-tool,$(DEV_TAG),--prefix "$(VERSION_PREFIX)" current)
 
+.PHONY: patch
 patch: ## Create a new patch release tag.
-	@echo 'dev-tag --prefix "$(VERSION_PREFIX)" patch'
-	@$(DEV_TAG) --prefix "$(VERSION_PREFIX)" patch
+	$(call run-tool,$(DEV_TAG),--prefix "$(VERSION_PREFIX)" patch)
 
+.PHONY: minor
 minor: ## Create a new minor release tag.
-	@echo 'dev-tag --prefix "$(VERSION_PREFIX)" minor'
-	@$(DEV_TAG) --prefix "$(VERSION_PREFIX)" minor
+	$(call run-tool,$(DEV_TAG),--prefix "$(VERSION_PREFIX)" minor)
 
+.PHONY: major
 major: ## Create a new major release tag.
-	@echo 'dev-tag --prefix "$(VERSION_PREFIX)" major'
-	@$(DEV_TAG) --prefix "$(VERSION_PREFIX)" major
+	$(call run-tool,$(DEV_TAG),--prefix "$(VERSION_PREFIX)" major)
 
+.PHONY: push
 push: ## Push local tags to the remote repository.
 	git push --tags
 
 ##@ General
 
 .PHONY: help
-
 help: ## Display this help.
 	@$(MAKE_HELP) $(MAKEFILE_LIST)
 ```
 
-For example, even when `DEV_TAG` resolves to:
-
-```text
-/Users/example/code/project/bin/dev-tag
-```
-
-`make patch` displays:
+For example, even when `DEV_TAG` ultimately refers to a repository-local executable, `make patch` displays:
 
 ```text
 dev-tag --prefix "v" patch
 Tagged v0.7.1
 ```
 
-instead of:
-
-```text
-/Users/example/code/project/bin/dev-tag --prefix "v" patch
-Tagged v0.7.1
-```
-
-The same approach can be used for other local tools when the real executable path should remain hidden from Make output.
+The project does not need to repeat `LOCALBIN`, `DEV_PORT`, `OPEN_BROWSER`, `DEV_TAG`, `MAKE_HELP`, or `GO_INSTALL_TOOL`. Those paths belong to the shared integration.
 
 ### Installing Go tools
 
-A Go project can use the shared installer instead of carrying its own installation macro:
+A Go project can use the shared installer and `run-tool` without carrying its own installer macro or path boilerplate:
 
 ```makefile
-LOCALBIN ?= $(CURDIR)/bin
+include bin/dev-tools.mk
 
-GO_INSTALL_TOOL := $(LOCALBIN)/go-install-tool
-GOLANGCI_LINT := $(LOCALBIN)/golangci-lint
+GOLANGCI_LINT := $(DEV_TOOLS_BIN)/golangci-lint
 
 # renovate: datasource=github-releases depName=golangci/golangci-lint
 GOLANGCI_LINT_VERSION ?= v2.13.2
 
-.PHONY: golangci-lint lint
-
-golangci-lint: dev-tools
-	@$(GO_INSTALL_TOOL) \
+.PHONY: golangci-lint
+golangci-lint:
+	$(call run-tool,$(GO_INSTALL_TOOL),\
 		--target "$(GOLANGCI_LINT)" \
 		--package github.com/golangci/golangci-lint/v2/cmd/golangci-lint \
-		--tool-version "$(GOLANGCI_LINT_VERSION)"
+		--tool-version "$(GOLANGCI_LINT_VERSION)")
 
+.PHONY: lint
 lint: golangci-lint
-	@echo "golangci-lint run"
-	@$(GOLANGCI_LINT) run
+	$(call run-tool,$(GOLANGCI_LINT),run)
 ```
 
-Using `$(GOLANGCI_LINT)` for the actual invocation means the local binary does not need to be added to `PATH`. The leading `@` hides its absolute path while the explicit `echo` keeps the command readable.
+Using `$(GOLANGCI_LINT)` for the actual invocation means the local binary does not need to be added to `PATH`, while `run-tool` keeps the displayed command readable.
 
 Add these entries to projects using `dev-tools`:
 
@@ -385,3 +397,4 @@ make help
 ```
 
 CI runs the test suite on Linux and macOS.
+
