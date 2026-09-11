@@ -9,7 +9,7 @@ include make/dev-tools-port.mk
 include make/dev-tools-browser.mk
 
 # renovate: datasource=github-releases depName=gi8lino/lore
-LORE_VERSION ?= v0.13.0
+LORE_VERSION ?= v0.14.0
 LORE := bin/lore
 LORE_ASSET ?= lore_{version}_{os}_{arch}.tar.gz
 

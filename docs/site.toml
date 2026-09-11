@@ -6,6 +6,7 @@ theme = "Light"
 language = "en"
 mermaid = true
 robots = "allow"
+navigation_style = "topbar"
 
 [[external_links]]
 label = "Repository"
