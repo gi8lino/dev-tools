@@ -10,6 +10,7 @@ open-browser
 dev-tag
 make-help
 go-install-tool
+github-release-install
 dev-tools.mk
 dev-tools-tag.mk
 dev-tools-port.mk

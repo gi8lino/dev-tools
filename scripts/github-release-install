@@ -1,0 +1,163 @@
+#!/usr/bin/env python3
+"""Install a platform-specific binary from a GitHub release."""
+
+# Upstream: https://github.com/gi8lino/dev-tools
+# Version: __VERSION__
+
+import argparse
+import os
+from pathlib import Path, PurePosixPath
+import platform
+import shutil
+import tarfile
+import tempfile
+import urllib.error
+import urllib.request
+
+
+OS_NAMES = {
+    "darwin": "darwin",
+    "linux": "linux",
+}
+
+ARCH_NAMES = {
+    "aarch64": "arm64",
+    "amd64": "amd64",
+    "arm64": "arm64",
+    "x86_64": "amd64",
+}
+
+
+def current_os():
+    name = platform.system().lower()
+    if name not in OS_NAMES:
+        raise ValueError(f"unsupported operating system: {name}")
+    return OS_NAMES[name]
+
+
+def current_arch():
+    name = platform.machine().lower()
+    if name not in ARCH_NAMES:
+        raise ValueError(f"unsupported architecture: {name}")
+    return ARCH_NAMES[name]
+
+
+def render_asset(template, tag, os_name, arch):
+    version = tag[1:] if tag.startswith("v") else tag
+    try:
+        asset = template.format(
+            version=version,
+            tag=tag,
+            os=os_name,
+            arch=arch,
+        )
+    except KeyError as error:
+        raise ValueError(f"unknown asset placeholder: {{{error.args[0]}}}") from error
+
+    if not asset or Path(asset).name != asset:
+        raise ValueError("asset template must resolve to a file name")
+    return asset
+
+
+def download(url, destination):
+    request = urllib.request.Request(url, headers={"User-Agent": "dev-tools/github-release-install"})
+    with urllib.request.urlopen(request) as response, destination.open("wb") as output:
+        shutil.copyfileobj(response, output)
+
+
+def normalize_member_name(name):
+    path = PurePosixPath(name)
+    while path.parts and path.parts[0] == ".":
+        path = PurePosixPath(*path.parts[1:])
+    return path
+
+
+def extract_binary(archive, binary, destination):
+    wanted = PurePosixPath(binary)
+    with tarfile.open(archive, "r:*") as source:
+        members = [member for member in source.getmembers() if member.isfile()]
+        exact = [member for member in members if normalize_member_name(member.name) == wanted]
+        matches = exact or [
+            member for member in members
+            if normalize_member_name(member.name).name == wanted.name
+        ]
+        if not matches:
+            raise ValueError(f"binary not found in archive: {binary}")
+        if len(matches) != 1:
+            raise ValueError(f"binary is ambiguous in archive: {binary}")
+
+        extracted = source.extractfile(matches[0])
+        if extracted is None:
+            raise ValueError(f"could not extract binary: {binary}")
+        with destination.open("wb") as output:
+            shutil.copyfileobj(extracted, output)
+
+
+def install(args):
+    if args.tag.find("/") >= 0 or args.tag.find("\\") >= 0:
+        raise ValueError("tag cannot contain path separators")
+    if args.repo.count("/") != 1 or any(not part for part in args.repo.split("/")):
+        raise ValueError("repo must use owner/name format")
+
+    os_name = args.os or current_os()
+    arch = args.arch or current_arch()
+    asset = render_asset(args.asset, args.tag, os_name, arch)
+
+    target = args.target
+    versioned = target.with_name(f"{target.name}-{args.tag}")
+    target.parent.mkdir(parents=True, exist_ok=True)
+
+    if not versioned.is_file():
+        base = args.base_url.rstrip("/")
+        url = f"{base}/{args.repo}/releases/download/{args.tag}/{asset}"
+        print(f"Downloading {args.repo} {args.tag} {asset}")
+
+        with tempfile.TemporaryDirectory(prefix=f".{target.name}-", dir=target.parent) as temporary:
+            temporary = Path(temporary)
+            downloaded = temporary / asset
+            installed = temporary / target.name
+            download(url, downloaded)
+
+            if args.binary:
+                extract_binary(downloaded, args.binary, installed)
+            else:
+                shutil.copyfile(downloaded, installed)
+
+            installed.chmod(installed.stat().st_mode | 0o111)
+            os.replace(installed, versioned)
+
+    if target.is_symlink():
+        if os.readlink(target) == versioned.name:
+            return
+        target.unlink()
+    elif target.exists():
+        target.unlink()
+
+    target.symlink_to(versioned.name)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--version", action="version", version="github-release-install __VERSION__")
+    parser.add_argument("--repo", required=True, help="GitHub repository in owner/name form")
+    parser.add_argument("--tag", required=True, help="release tag, such as v1.2.3")
+    parser.add_argument(
+        "--asset",
+        required=True,
+        help="asset name template using {version}, {tag}, {os}, and {arch}",
+    )
+    parser.add_argument("--binary", help="binary path or unique binary name inside a tar archive")
+    parser.add_argument("--target", required=True, type=Path, help="stable installed binary path")
+    parser.add_argument("--os", choices=("darwin", "linux"), help=argparse.SUPPRESS)
+    parser.add_argument("--arch", choices=("amd64", "arm64"), help=argparse.SUPPRESS)
+    parser.add_argument("--base-url", default="https://github.com", help=argparse.SUPPRESS)
+    args = parser.parse_args()
+
+    try:
+        install(args)
+    except (OSError, ValueError, tarfile.TarError, urllib.error.URLError) as error:
+        parser.exit(1, f"github-release-install: {error}\n")
+
+
+if __name__ == "__main__":
+    main()

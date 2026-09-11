@@ -8,7 +8,7 @@ The goal is to keep project Makefiles readable: commit one bootstrap file, inclu
 
 | Module | Purpose |
 | --- | --- |
-| Core | Shared download helpers, versioned cache, readable local-tool execution, and `go-install-tool` |
+| Core | Shared download helpers, versioned cache, readable local-tool execution, `go-install-tool`, and `github-release-install` |
 | Tagging | Semantic-version tag targets |
 | Ports | Persistent named development ports |
 | Browser | Wait for a local HTTP endpoint and open it in the default browser |
@@ -25,6 +25,7 @@ The releases also contain these directly runnable tools:
 - `dev-tag`
 - `make-help`
 - `go-install-tool`
+- `github-release-install`
 
 See [Executable tools](tools.md) for their command-line behavior and examples.
 

@@ -72,14 +72,14 @@ class DevToolsMakeTests(unittest.TestCase):
             "\n"
             ".PHONY: paths\n"
             "paths:\n"
-            "\t@printf '%s\\n' '$(DEV_TOOLS_ROOT)' '$(DEV_TOOLS_BIN)' '$(GO_INSTALL_TOOL)'\n"
+            "\t@printf '%s\\n' '$(DEV_TOOLS_ROOT)' '$(DEV_TOOLS_BIN)' '$(GO_INSTALL_TOOL)' '$(GITHUB_RELEASE_INSTALL)'\n"
         )
 
         result = self.make("paths")
 
         self.assertEqual(
             result.stdout.splitlines(),
-            ["bin", "bin", "bin/go-install-tool"],
+            ["bin", "bin", "bin/go-install-tool", "bin/github-release-install"],
         )
 
     def test_core_uses_version_specific_cache_when_version_is_set(self):
@@ -122,6 +122,29 @@ class DevToolsMakeTests(unittest.TestCase):
             ["example-tool --flag value", "ran --flag value"],
         )
         self.assertNotIn(str(self.root), result.stdout)
+
+    def test_core_downloads_github_release_installer(self):
+        self.add_release_tool("github-release-install", "printf 'installer\\n'\n")
+
+        (self.root / "Makefile").write_text(
+            "DEV_TOOLS_VERSION := v1.2.3\n"
+            "include bin/dev-tools.mk\n"
+            "\n"
+            ".PHONY: installer\n"
+            "installer: $(GITHUB_RELEASE_INSTALL)\n"
+            "\t@$(GITHUB_RELEASE_INSTALL)\n"
+        )
+
+        result = self.make("installer")
+
+        self.assertIn(
+            "Downloading gi8lino/dev-tools v1.2.3 github-release-install",
+            result.stdout,
+        )
+        self.assertEqual(result.stdout.splitlines()[-1], "installer")
+        installed = self.bin / ".dev-tools" / "v1.2.3" / "github-release-install"
+        self.assertTrue(installed.is_file())
+        self.assertTrue(os.access(installed, os.X_OK))
 
     def test_missing_tag_module_and_tool_are_downloaded_automatically(self):
         self.add_release_module("dev-tools-tag.mk")

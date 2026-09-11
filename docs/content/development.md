@@ -54,6 +54,6 @@ The default local documentation port is `8081`; override it when needed:
 make site-serve SITE_PORT=8090
 ```
 
-`make site` and `make site-serve` download the pinned Lore release for the current macOS or Linux architecture into `.cache/lore/` when needed. The archive is verified against the checksum published with the same GitHub release. No system-wide Lore installation is required.
+`make site` and `make site-serve` use `github-release-install` to install the pinned Lore release into `bin/` when needed. The helper detects the current macOS/Linux architecture, keeps the concrete binary as `bin/lore-<tag>`, and maintains `bin/lore` as the stable symlink. No system-wide Lore installation is required.
 
 GitHub Actions uses the same `make site` path, so CI also builds exclusively with the pinned Lore GitHub release before deploying `docs/site/` through GitHub Pages.

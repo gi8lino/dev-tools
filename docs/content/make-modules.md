@@ -17,6 +17,7 @@ $(DEV_TOOLS_ROOT)
 $(DEV_TOOLS_CACHE)
 $(DEV_TOOLS_BIN)
 $(GO_INSTALL_TOOL)
+$(GITHUB_RELEASE_INSTALL)
 $(call dev-tools-module,<name>)
 $(call download-dev-file,<asset>,<target>)
 $(call download-dev-tool,<asset>,<target>)
@@ -60,6 +61,34 @@ $(GOLANGCI_LINT): $(GO_INSTALL_TOOL)
 lint: $(GOLANGCI_LINT)
 	$(call run-tool,$(GOLANGCI_LINT),run)
 ```
+
+
+### Installing GitHub release binaries
+
+`github-release-install` belongs to the core as well. It hides platform detection, release URL construction, versioned filenames, and symlink management from project Makefiles.
+
+For Lore, a project can keep only the stable path and release metadata:
+
+```makefile
+LORE := bin/lore
+
+# renovate: datasource=github-releases depName=gi8lino/lore
+LORE_VERSION ?= v0.13.0
+LORE_ASSET ?= lore_{version}_{os}_{arch}.tar.gz
+
+.PHONY: lore
+lore: $(GITHUB_RELEASE_INSTALL)
+	@$(GITHUB_RELEASE_INSTALL) \
+		--repo gi8lino/lore \
+		--tag "$(LORE_VERSION)" \
+		--asset "$(LORE_ASSET)" \
+		--binary lore \
+		--target "$(LORE)"
+```
+
+The installer creates a concrete binary such as `bin/lore-v0.13.0` and maintains `bin/lore` as a relative symlink. The Makefile does not need a `LORE_VERSIONED` variable or its own `ln -sf` recipe.
+
+The `lore` wrapper target is phony on purpose: it lets the installer inspect the requested version on every invocation. If the versioned binary already exists and the symlink is correct, the helper returns without downloading anything. If `LORE_VERSION` changes, it installs the new version and repoints the stable symlink.
 
 ## Tagging module
 

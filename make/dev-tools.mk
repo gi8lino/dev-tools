@@ -7,6 +7,7 @@ DEV_TOOLS_CACHE := $(if $(strip $(DEV_TOOLS_VERSION)),$(DEV_TOOLS_ROOT)/.dev-too
 DEV_TOOLS_BIN ?= $(if $(DEV_TOOLS_CACHE),$(DEV_TOOLS_CACHE),$(DEV_TOOLS_ROOT))
 
 GO_INSTALL_TOOL := $(DEV_TOOLS_BIN)/go-install-tool
+GITHUB_RELEASE_INSTALL := $(DEV_TOOLS_BIN)/github-release-install
 
 dev-tools-module = $(DEV_TOOLS_BIN)/dev-tools-$(1).mk
 
@@ -60,7 +61,10 @@ $(DEV_TOOLS_BIN):
 $(DEV_TOOLS_BIN)/dev-tools-%.mk: | $(DEV_TOOLS_BIN)
 	$(call download-dev-file,dev-tools-$*.mk,$@)
 
-# go-install-tool is part of the core because projects use it for their own Go tools.
+# Generic installers are part of the core because projects use them for their own tools.
 $(GO_INSTALL_TOOL): | $(DEV_TOOLS_BIN)
 	$(call download-dev-tool,go-install-tool,$@)
+
+$(GITHUB_RELEASE_INSTALL): | $(DEV_TOOLS_BIN)
+	$(call download-dev-tool,github-release-install,$@)
 endif

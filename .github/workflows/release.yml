@@ -29,6 +29,7 @@ jobs:
             scripts/dev-tag \
             scripts/make-help \
             scripts/go-install-tool \
+            scripts/github-release-install \
             make/dev-tools*.mk \
             dist/
 
@@ -55,7 +56,8 @@ jobs:
             dist/open-browser \
             dist/dev-tag \
             dist/make-help \
-            dist/go-install-tool
+            dist/go-install-tool \
+            dist/github-release-install
 
       - name: Verify release assets
         run: |
@@ -68,6 +70,7 @@ jobs:
           test "$(dist/dev-tag --version)" = "dev-tag ${version}"
           test "$(dist/make-help --version)" = "make-help ${version}"
           test "$(dist/go-install-tool --version)" = "go-install-tool ${version}"
+          test "$(dist/github-release-install --version)" = "github-release-install ${version}"
 
           for makefile in dist/dev-tools*.mk; do
             grep -Fxq "# Version: ${version}" "$makefile"
@@ -88,6 +91,7 @@ jobs:
             dev-tag \
             make-help \
             go-install-tool \
+            github-release-install \
             dev-tools*.mk \
             > checksums.txt
 
@@ -101,6 +105,7 @@ jobs:
             dist/dev-tag \
             dist/make-help \
             dist/go-install-tool \
+            dist/github-release-install \
             dist/dev-tools*.mk \
             dist/checksums.txt \
             --generate-notes \

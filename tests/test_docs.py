@@ -45,15 +45,32 @@ class DocumentationTests(unittest.TestCase):
         self.assertNotIn("## Releases", readme)
         self.assertNotIn("## Development", readme)
 
-    def test_lore_is_pinned_and_downloaded_from_github_release(self):
+    def test_lore_is_pinned_and_installed_with_shared_release_helper(self):
         makefile = (self.root / "Makefile").read_text()
 
         self.assertIn("depName=gi8lino/lore", makefile)
         self.assertIn("LORE_VERSION ?= v0.13.0", makefile)
-        self.assertIn("github.com/gi8lino/lore/releases/download/$(LORE_VERSION)", makefile)
-        self.assertIn("site: $(LORE)", makefile)
-        self.assertIn("site-serve: $(LORE)", makefile)
-        self.assertNotIn("LORE ?= lore", makefile)
+        self.assertIn("LORE := bin/lore", makefile)
+        self.assertIn("lore: $(GITHUB_RELEASE_INSTALL)", makefile)
+        self.assertIn("--repo gi8lino/lore", makefile)
+        self.assertIn("--tag \"$(LORE_VERSION)\"", makefile)
+        self.assertIn("--asset \"$(LORE_ASSET)\"", makefile)
+        self.assertIn("--target \"$(LORE)\"", makefile)
+        self.assertIn("site: lore", makefile)
+        self.assertIn("site-serve: lore", makefile)
+        self.assertNotIn("LORE_VERSIONED", makefile)
+        self.assertNotIn("ln -sf", makefile)
+        self.assertNotIn("github.com/gi8lino/lore/releases/download", makefile)
+
+    def test_github_release_installer_is_documented_and_released(self):
+        tools = (self.content / "tools.md").read_text()
+        release = (self.root / ".github" / "workflows" / "release.yml").read_text()
+        core = (self.root / "make" / "dev-tools.mk").read_text()
+
+        self.assertIn("## github-release-install", tools)
+        self.assertIn("GITHUB_RELEASE_INSTALL :=", core)
+        self.assertIn("scripts/github-release-install", release)
+        self.assertIn("dist/github-release-install --version", release)
 
     def test_pages_uses_make_site_for_lore_download(self):
         workflow = (self.root / ".github" / "workflows" / "pages.yml").read_text()
