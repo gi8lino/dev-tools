@@ -1,0 +1,50 @@
+#!/usr/bin/env python3
+"""Verify the checked-in Lore documentation structure and target coverage."""
+
+from pathlib import Path
+import unittest
+
+
+class DocumentationTests(unittest.TestCase):
+    def setUp(self):
+        self.root = Path(__file__).resolve().parent.parent
+        self.content = self.root / "docs" / "content"
+
+    def test_lore_site_layout(self):
+        config = (self.root / "docs" / "site.toml").read_text()
+
+        self.assertIn('site_url = "https://gi8lino.github.io/dev-tools/"', config)
+        self.assertIn('source_dir = "docs/content"', config)
+        self.assertIn('output_dir = "docs/site"', config)
+        self.assertTrue((self.content / "index.md").is_file())
+
+    def test_all_repository_make_targets_are_documented(self):
+        documentation = (self.content / "make-modules.md").read_text()
+        targets = (
+            "current",
+            "patch",
+            "minor",
+            "major",
+            "push",
+            "help",
+            "test",
+            "site",
+            "site-serve",
+        )
+
+        for target in targets:
+            with self.subTest(target=target):
+                self.assertIn(f"`make {target}`", documentation)
+
+    def test_readme_stays_focused_on_modules_and_bootstrap(self):
+        readme = (self.root / "README.md").read_text()
+
+        self.assertIn("## Make modules", readme)
+        self.assertIn("## Quick start", readme)
+        self.assertIn("https://gi8lino.github.io/dev-tools/", readme)
+        self.assertNotIn("## Releases", readme)
+        self.assertNotIn("## Development", readme)
+
+
+if __name__ == "__main__":
+    unittest.main()

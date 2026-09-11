@@ -1,0 +1,22 @@
+site_name = "dev-tools"
+site_url = "https://gi8lino.github.io/dev-tools/"
+source_dir = "docs/content"
+output_dir = "docs/site"
+theme = "Light"
+language = "en"
+mermaid = true
+robots = "allow"
+
+[[external_links]]
+label = "Repository"
+url = "https://github.com/gi8lino/dev-tools"
+icon = "github-simple"
+description = "GitHub"
+hover_text = "{{label}} | {{description}}"
+
+[[external_links]]
+label = "Lore"
+url = "https://github.com/gi8lino/lore"
+icon = "book-open-lucide"
+description = "Documentation engine"
+hover_text = "{{label}} | {{description}}"
