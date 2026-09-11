@@ -36,7 +36,7 @@ The complete target list is documented in [Make modules and targets](make-module
 
 The documentation is generated with [Lore](https://github.com/gi8lino/lore) from `docs/content/` using `docs/site.toml`.
 
-With a `lore` binary on `PATH`, build it with:
+Build it with:
 
 ```sh
 make site
@@ -54,4 +54,6 @@ The default local documentation port is `8081`; override it when needed:
 make site-serve SITE_PORT=8090
 ```
 
-GitHub Actions downloads a pinned Lore release, builds `docs/site/`, verifies the expected static files, and deploys that directory through GitHub Pages.
+`make site` and `make site-serve` download the pinned Lore release for the current macOS or Linux architecture into `.cache/lore/` when needed. The archive is verified against the checksum published with the same GitHub release. No system-wide Lore installation is required.
+
+GitHub Actions uses the same `make site` path, so CI also builds exclusively with the pinned Lore GitHub release before deploying `docs/site/` through GitHub Pages.

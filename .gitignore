@@ -3,4 +3,5 @@ __pycache__/
 .DS_Store
 .dev-ports.json
 .dev-ports.json.lock
+/.cache/
 /docs/site/

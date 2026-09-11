@@ -26,9 +26,6 @@ concurrency:
   group: pages-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  LORE_VERSION: v0.13.0
-
 jobs:
   build:
     name: Build documentation
@@ -37,28 +34,6 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@v7
-
-      - name: Install Lore
-        run: |
-          set -eu
-
-          version="${LORE_VERSION#v}"
-          archive="lore_${version}_linux_amd64.tar.gz"
-          checksums="lore_${version}_checksums.txt"
-          base="https://github.com/gi8lino/lore/releases/download/${LORE_VERSION}"
-
-          curl --fail --silent --show-error --location \
-            "${base}/${archive}" \
-            -o "${RUNNER_TEMP}/${archive}"
-          curl --fail --silent --show-error --location \
-            "${base}/${checksums}" \
-            -o "${RUNNER_TEMP}/${checksums}"
-
-          cd "${RUNNER_TEMP}"
-          grep " ${archive}$" "${checksums}" | sha256sum --check -
-          tar -xzf "${archive}"
-          test -x lore
-          echo "${RUNNER_TEMP}" >> "${GITHUB_PATH}"
 
       - name: Build static documentation
         run: make site

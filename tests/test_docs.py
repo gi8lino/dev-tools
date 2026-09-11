@@ -45,6 +45,22 @@ class DocumentationTests(unittest.TestCase):
         self.assertNotIn("## Releases", readme)
         self.assertNotIn("## Development", readme)
 
+    def test_lore_is_pinned_and_downloaded_from_github_release(self):
+        makefile = (self.root / "Makefile").read_text()
+
+        self.assertIn("depName=gi8lino/lore", makefile)
+        self.assertIn("LORE_VERSION ?= v0.13.0", makefile)
+        self.assertIn("github.com/gi8lino/lore/releases/download/$(LORE_VERSION)", makefile)
+        self.assertIn("site: $(LORE)", makefile)
+        self.assertIn("site-serve: $(LORE)", makefile)
+        self.assertNotIn("LORE ?= lore", makefile)
+
+    def test_pages_uses_make_site_for_lore_download(self):
+        workflow = (self.root / ".github" / "workflows" / "pages.yml").read_text()
+
+        self.assertIn("run: make site", workflow)
+        self.assertNotIn("Install Lore", workflow)
+
 
 if __name__ == "__main__":
     unittest.main()
