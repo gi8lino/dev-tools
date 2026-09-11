@@ -21,7 +21,7 @@ Keep `bin/dev-tools.mk` in the consuming repository and include only the modules
 Download the bootstrap file from the release you want to use:
 
 ```sh
-version=v0.6.0
+version=v0.7.0
 mkdir -p bin
 curl -fL \
   "https://github.com/gi8lino/dev-tools/releases/download/${version}/dev-tools.mk" \
