@@ -5,13 +5,14 @@ DEV_TOOLS_BIN := scripts
 include make/dev-tools.mk
 include make/dev-tools-tag.mk
 include make/dev-tools-help.mk
+include make/dev-tools-port.mk
 
 # renovate: datasource=github-releases depName=gi8lino/lore
 LORE_VERSION ?= v0.13.0
 LORE := bin/lore
 LORE_ASSET ?= lore_{version}_{os}_{arch}.tar.gz
 SITE_CONFIG ?= docs/site.toml
-SITE_PORT ?= 8081
+SITE_PORT ?= $(call dev-port,site)
 
 ##@ Development
 
@@ -35,7 +36,7 @@ site: lore ## Build the documentation site with Lore.
 	$(LORE) build --config "$(SITE_CONFIG)"
 
 .PHONY: site-serve
-site-serve: lore ## Build and serve the documentation site locally.
+site-serve: lore $(DEV_PORT) ## Build and serve the documentation site locally.
 	$(LORE) build \
 		--config "$(SITE_CONFIG)" \
 		--site-url "http://127.0.0.1:$(SITE_PORT)/"

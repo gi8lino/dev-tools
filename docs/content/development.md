@@ -48,7 +48,7 @@ Build for localhost and serve the result:
 make site-serve
 ```
 
-The default local documentation port is `8081`; override it when needed:
+The local documentation port is assigned persistently by `dev-port` under the name `site`, so separate `make site-serve` invocations reuse the same port. You can still override it explicitly when needed:
 
 ```sh
 make site-serve SITE_PORT=8090

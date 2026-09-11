@@ -208,4 +208,4 @@ The dev-tools repository itself uses the same modules and adds its own developme
 | `make help` | Show generated Make help |
 | `make test` | Run the complete Python unit test suite |
 | `make site` | Build this documentation with Lore |
-| `make site-serve` | Build the documentation for localhost and serve it on the configured port |
+| `make site-serve` | Build the documentation for localhost and serve it on the persistent `dev-port` assignment named `site` |
