@@ -2,7 +2,7 @@
 
 Small, reusable development helpers for macOS and Linux. The tools require Python 3.8 or newer and use only the standard library.
 
-Maintained source scripts live in `scripts/`; release assets keep their short executable names. `scripts/dev-tools.mk` provides the shared GNU Make integration.
+Maintained source scripts live in `scripts/`; release assets keep their short executable names. GNU Make integration is split into a small core plus optional feature modules.
 
 ## Tools
 
@@ -67,73 +67,14 @@ Unrelated tags and non-semantic-version tags are ignored. `dev-tag` creates the 
 
 ### `make-help`
 
-Generate Makefile help output from targets documented with `##`.
-
-```makefile
-.DEFAULT_GOAL := help
-
-include bin/dev-tools.mk
-
-.PHONY: test
-test: ## Run all tests.
-	python3 -m unittest discover -s tests -v
-
-.PHONY: help
-help: ## Display this help.
-	@$(MAKE_HELP) $(MAKEFILE_LIST)
-```
-
-Running `make` or `make help` displays:
-
-```text
-Usage:
-  make <target>
-
-  test                 Run all tests.
-  help                 Display this help.
-```
-
-Multiple Makefiles can be passed to the command:
-
-```sh
-./scripts/make-help Makefile build.mk
-```
-
-When no file is specified, `make-help` reads `Makefile` from the current directory.
-
-Use `##@` headings to group related targets:
+Generate Makefile help output from targets documented with `##` and section headings documented with `##@`.
 
 ```makefile
 ##@ Development
 
+.PHONY: test
 test: ## Run all tests.
-	...
-
-lint: ## Run the linter.
-	...
-
-##@ Release
-
-patch: ## Create a patch release.
-	...
-
-minor: ## Create a minor release.
-	...
-```
-
-which produces:
-
-```text
-Usage:
-  make <target>
-
-Development
-  test                 Run all tests.
-  lint                 Run the linter.
-
-Release
-  patch                Create a patch release.
-  minor                Create a minor release.
+	go test ./...
 ```
 
 ### `go-install-tool`
@@ -149,40 +90,231 @@ Install a pinned Go tool into a local bin directory, keep the versioned binary, 
 
 The example creates `bin/golangci-lint-v2.13.2` and links `bin/golangci-lint` to it. Existing versioned binaries are reused instead of being downloaded again.
 
-### `dev-tools.mk`
+## GNU Make integration
 
-Shared GNU Make integration for projects that install the release assets together in one directory.
+The Make integration is modular:
+
+```text
+dev-tools.mk          Core helpers and go-install-tool
+dev-tools-tag.mk      Semantic-version tag targets
+dev-tools-port.mk     Named development-port integration
+dev-tools-browser.mk  Browser launcher integration
+dev-tools-help.mk     Generated Make help target
+```
+
+A consuming repository only needs to keep the core file. Feature modules and their executables are downloaded from the pinned release when Make needs them.
+
+A typical repository starts with:
+
+```text
+project/
+├── Makefile
+└── bin/
+    └── dev-tools.mk
+```
+
+Use a version pin before the includes:
 
 ```makefile
+.DEFAULT_GOAL := help
+
+# renovate: datasource=github-releases depName=gi8lino/dev-tools
+DEV_TOOLS_VERSION ?= v0.5.0
+
 include bin/dev-tools.mk
+include $(call dev-tools-module,tag)
+include $(call dev-tools-module,port)
+include $(call dev-tools-module,browser)
+include $(call dev-tools-module,help)
 ```
 
-The include determines its own directory and exposes the paths to the bundled tools:
+`dev-tools.mk` maps each requested module to a version-specific cache directory. If, for example, the tagging module is missing, GNU Make downloads it and then reparses the Makefiles. The module downloads `dev-tag` only when a tagging target needs it.
+
+After running `make patch`, the directory can therefore look like:
+
+```text
+bin/
+├── dev-tools.mk
+└── .dev-tools/
+    └── v0.5.0/
+        ├── dev-tools-tag.mk
+        └── dev-tag
+```
+
+Only explicitly included feature modules are fetched.
+
+### Core helpers
+
+`dev-tools.mk` determines its own directory, so consuming projects do not need `LOCALBIN` or repeated absolute tool paths.
+
+It provides:
 
 ```makefile
+$(DEV_TOOLS_ROOT)
 $(DEV_TOOLS_BIN)
-$(DEV_PORT)
-$(OPEN_BROWSER)
-$(DEV_TAG)
-$(MAKE_HELP)
 $(GO_INSTALL_TOOL)
+$(call dev-tools-module,<name>)
+$(call download-dev-tool,<asset>,<target>)
+$(call run-tool,<executable>,<arguments>)
 ```
 
-It also provides `dev-port` for resolving named development ports and `run-tool` for executing a local tool while displaying only its executable name:
+`DEV_TOOLS_ROOT` is the directory containing the committed `dev-tools.mk`. With a version pin, `DEV_TOOLS_BIN` points at `.dev-tools/<version>` below that directory.
+
+`run-tool` keeps Make output readable while still executing the repository-local binary. For example:
 
 ```makefile
-APP_PORT ?= $(call dev-port,app)
-
-.PHONY: patch
-patch:
-	$(call run-tool,$(DEV_TAG),--prefix "v" patch)
+.PHONY: lint
+lint: $(GOLANGCI_LINT)
+	$(call run-tool,$(GOLANGCI_LINT),run)
 ```
 
-For an include installed at `bin/dev-tools.mk`, `DEV_TOOLS_BIN` resolves to `bin`, so projects do not need their own `LOCALBIN` or repeated dev-tools path variables.
+can display:
+
+```text
+golangci-lint run
+```
+
+instead of an absolute path.
+
+`go-install-tool` belongs to the core because projects can use it to install arbitrary pinned Go tools:
+
+```makefile
+GOLANGCI_LINT := $(DEV_TOOLS_ROOT)/golangci-lint
+
+# renovate: datasource=github-releases depName=golangci/golangci-lint
+GOLANGCI_LINT_VERSION ?= v2.13.2
+
+$(GOLANGCI_LINT): $(GO_INSTALL_TOOL)
+	$(call run-tool,$(GO_INSTALL_TOOL),\
+		--target "$(GOLANGCI_LINT)" \
+		--package github.com/golangci/golangci-lint/v2/cmd/golangci-lint \
+		--tool-version "$(GOLANGCI_LINT_VERSION)")
+
+.PHONY: lint
+lint: $(GOLANGCI_LINT)
+	$(call run-tool,$(GOLANGCI_LINT),run)
+```
+
+### Tagging module
+
+Include:
+
+```makefile
+include $(call dev-tools-module,tag)
+```
+
+The module provides:
+
+```text
+make current
+make patch
+make minor
+make major
+make push
+```
+
+Set a different tag prefix when needed:
+
+```makefile
+VERSION_PREFIX ?= v
+```
+
+or:
+
+```sh
+make patch VERSION_PREFIX=
+```
+
+### Port module
+
+Include:
+
+```makefile
+include $(call dev-tools-module,port)
+```
+
+Then resolve named ports with:
+
+```makefile
+APP_PORT = $(call dev-port,app)
+DB_PORT = $(call dev-port,postgres)
+```
+
+Targets that expand those values should depend on `$(DEV_PORT)` so the executable is available before the recipe is expanded:
+
+```makefile
+.PHONY: ports
+ports: $(DEV_PORT) ## Show development ports.
+	@printf 'App: http://127.0.0.1:%s/\n' '$(APP_PORT)'
+	@printf 'Postgres: 127.0.0.1:%s\n' '$(DB_PORT)'
+```
+
+### Browser module
+
+Include:
+
+```makefile
+include $(call dev-tools-module,browser)
+```
+
+Then make the consuming target depend on `$(OPEN_BROWSER)`:
+
+```makefile
+.PHONY: open
+open: $(DEV_PORT) $(OPEN_BROWSER) ## Open the application.
+	$(call run-tool,$(OPEN_BROWSER),"http://127.0.0.1:$(APP_PORT)/")
+```
+
+### Help module
+
+Include:
+
+```makefile
+include $(call dev-tools-module,help)
+```
+
+It provides the `help` target and passes all parsed Makefiles to `make-help`, so targets from included feature modules appear automatically.
+
+Put this before the includes when help should be the default target:
+
+```makefile
+.DEFAULT_GOAL := help
+```
+
+### Version changes
+
+Downloaded feature modules and dev-tools executables are cached under `bin/.dev-tools/<version>`. Changing `DEV_TOOLS_VERSION` selects a different cache directory, so version changes never depend on filesystem modification times. Older caches can remain in place and are reusable if the project switches back to an earlier pin.
+
+The committed `bin/dev-tools.mk` is the bootstrap/core file itself. When the core changes in a future dev-tools release, replace that committed file with the new release version as part of adopting that release.
+
+### Git ignore
+
+A consuming repository can keep only the bootstrap file under version control:
+
+```gitignore
+/bin/*
+!/bin/dev-tools.mk
+/.dev-ports.json
+/.dev-ports.json.lock
+```
+
+## Installing the bootstrap
+
+Install `dev-tools.mk` once from the release you want to adopt:
+
+```sh
+version=v0.5.0
+mkdir -p bin
+curl -fL \
+  "https://github.com/gi8lino/dev-tools/releases/download/${version}/dev-tools.mk" \
+  -o bin/dev-tools.mk
+```
+
+Then commit `bin/dev-tools.mk`. The project's `DEV_TOOLS_VERSION` pin controls the automatically downloaded modules and executables.
 
 ## Releases
 
-Each release contains five executable tools, the shared Make include, and checksums:
+Each release contains the executable tools, all Make modules, and checksums:
 
 ```text
 dev-port
@@ -191,189 +323,31 @@ dev-tag
 make-help
 go-install-tool
 dev-tools.mk
+dev-tools-tag.mk
+dev-tools-port.mk
+dev-tools-browser.mk
+dev-tools-help.mk
 checksums.txt
 ```
 
-A pushed `v*` tag creates the GitHub release and uploads all six reusable assets plus the checksum file.
+A pushed `v*` tag creates the GitHub release. The workflow replaces each `__VERSION__` placeholder, verifies the executables and Make modules, generates checksums, and uploads the complete asset set.
 
-Use the Make targets to create semantic version tags:
+This repository uses the same modular Make integration itself:
+
+```makefile
+include scripts/dev-tools.mk
+include $(call dev-tools-module,tag)
+include $(call dev-tools-module,help)
+```
+
+Create release tags with:
 
 ```sh
 make current
 make patch
 make minor
 make major
-```
-
-For example:
-
-```text
-$ make current
-dev-tag --prefix "v" current
-v0.4.0
-
-$ make patch
-dev-tag --prefix "v" patch
-Tagged v0.4.1
-```
-
-The repository Makefile uses the same `scripts/dev-tools.mk` integration that consuming projects use, so the real `scripts/dev-tag` path remains hidden from the displayed command.
-
-Tags are created locally. Push them explicitly:
-
-```sh
 make push
-```
-
-which runs:
-
-```sh
-git push --tags
-```
-
-The scripts and `dev-tools.mk` contain release version metadata. The release workflow replaces the version placeholder, verifies every asset, and rejects unresolved placeholders.
-
-To use tags without the default `v` prefix:
-
-```sh
-make patch VERSION_PREFIX=
-```
-
-## Installing a Release
-
-To install a pinned release into a repository-local `bin` directory:
-
-```sh
-version=v0.4.0
-
-mkdir -p bin
-
-for asset in dev-port open-browser dev-tag make-help go-install-tool dev-tools.mk; do
-  curl -fL \
-    "https://github.com/gi8lino/dev-tools/releases/download/${version}/${asset}" \
-    -o "bin/${asset}"
-done
-
-chmod +x \
-  bin/dev-port \
-  bin/open-browser \
-  bin/dev-tag \
-  bin/make-help \
-  bin/go-install-tool
-```
-
-This makes the release easy to pin with Renovate:
-
-```makefile
-# renovate: datasource=github-releases depName=gi8lino/dev-tools
-DEV_TOOLS_VERSION ?= v0.4.0
-```
-
-`dev-tools.mk` is the Make integration layer, not the initial downloader. Make sure it exists before parsing a Makefile that includes it, for example by installing the pinned release as part of the repository's bootstrap process.
-
-## Use from Make
-
-Once the release is installed together in `bin`, projects only need to include the shared Make file. The include derives all bundled tool paths from its own location.
-
-```makefile
-.DEFAULT_GOAL := help
-
-include bin/dev-tools.mk
-
-VERSION_PREFIX ?= v
-
-# renovate: datasource=github-releases depName=gi8lino/dev-tools
-DEV_TOOLS_VERSION ?= v0.4.0
-
-APP_PORT ?= $(call dev-port,app)
-DB_PORT ?= $(call dev-port,postgres)
-
-##@ Development
-
-.PHONY: ports
-ports: ## Show development ports.
-	@$(DEV_PORT) app --port "$(APP_PORT)" > /dev/null
-	@$(DEV_PORT) postgres --port "$(DB_PORT)" > /dev/null
-	@echo "App: http://127.0.0.1:$(APP_PORT)/"
-	@echo "Postgres: 127.0.0.1:$(DB_PORT)"
-
-.PHONY: ports-reset
-ports-reset: ## Reset development port assignments.
-	$(call run-tool,$(DEV_PORT),--reset)
-
-.PHONY: open
-open: ## Open the application in the default browser.
-	$(call run-tool,$(OPEN_BROWSER),"http://127.0.0.1:$(APP_PORT)/")
-
-##@ Release
-
-.PHONY: current
-current: ## Show the current semantic version tag.
-	$(call run-tool,$(DEV_TAG),--prefix "$(VERSION_PREFIX)" current)
-
-.PHONY: patch
-patch: ## Create a new patch release tag.
-	$(call run-tool,$(DEV_TAG),--prefix "$(VERSION_PREFIX)" patch)
-
-.PHONY: minor
-minor: ## Create a new minor release tag.
-	$(call run-tool,$(DEV_TAG),--prefix "$(VERSION_PREFIX)" minor)
-
-.PHONY: major
-major: ## Create a new major release tag.
-	$(call run-tool,$(DEV_TAG),--prefix "$(VERSION_PREFIX)" major)
-
-.PHONY: push
-push: ## Push local tags to the remote repository.
-	git push --tags
-
-##@ General
-
-.PHONY: help
-help: ## Display this help.
-	@$(MAKE_HELP) $(MAKEFILE_LIST)
-```
-
-For example, even when `DEV_TAG` ultimately refers to a repository-local executable, `make patch` displays:
-
-```text
-dev-tag --prefix "v" patch
-Tagged v0.7.1
-```
-
-The project does not need to repeat `LOCALBIN`, `DEV_PORT`, `OPEN_BROWSER`, `DEV_TAG`, `MAKE_HELP`, or `GO_INSTALL_TOOL`. Those paths belong to the shared integration.
-
-### Installing Go tools
-
-A Go project can use the shared installer and `run-tool` without carrying its own installer macro or path boilerplate:
-
-```makefile
-include bin/dev-tools.mk
-
-GOLANGCI_LINT := $(DEV_TOOLS_BIN)/golangci-lint
-
-# renovate: datasource=github-releases depName=golangci/golangci-lint
-GOLANGCI_LINT_VERSION ?= v2.13.2
-
-.PHONY: golangci-lint
-golangci-lint:
-	$(call run-tool,$(GO_INSTALL_TOOL),\
-		--target "$(GOLANGCI_LINT)" \
-		--package github.com/golangci/golangci-lint/v2/cmd/golangci-lint \
-		--tool-version "$(GOLANGCI_LINT_VERSION)")
-
-.PHONY: lint
-lint: golangci-lint
-	$(call run-tool,$(GOLANGCI_LINT),run)
-```
-
-Using `$(GOLANGCI_LINT)` for the actual invocation means the local binary does not need to be added to `PATH`, while `run-tool` keeps the displayed command readable.
-
-Add these entries to projects using `dev-tools`:
-
-```gitignore
-/.dev-ports.json
-/.dev-ports.json.lock
 ```
 
 ## Development
@@ -384,17 +358,10 @@ Run the complete test suite with:
 make test
 ```
 
-Run the generated Makefile help with:
+Run generated Make help with:
 
 ```sh
 make
 ```
 
-or:
-
-```sh
-make help
-```
-
-CI runs the test suite on Linux and macOS.
-
+CI runs the tests on Linux and macOS.
